@@ -5,6 +5,8 @@
 !/msvc/ships.vcxproj.filters
 !/msvc/ships.vcxproj.user
 
+textures/*
+
 *.exe
 *.dll
 *.pdb

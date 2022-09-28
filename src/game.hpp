@@ -4,9 +4,11 @@
 #include "engine/dbgdraw.hpp"
 
 struct Game {
-	SERIALIZE(Game, cam)
+	SERIALIZE(Game, cam, dbg_cam, view_dbg_cam)
 	
 	Flycam cam;
+	Flycam dbg_cam;
+	bool view_dbg_cam = false;
 
 	DebugDraw dbgdraw;
 
@@ -15,17 +17,22 @@ struct Game {
 	float sun_t = 0.75; // [0,1] -> [0,24] hours
 
 	void imgui () {
-		if (ImGui::Begin("Time of Day")) {
+		if (ImGui::Begin("Misc")) {
+			
+			if (imgui_Header("Game", true)) {
 
-			ImGui::SliderAngle("sun_azim", &sun_azim, 0, 360);
-			ImGui::SliderAngle("sun_elev", &sun_elev, -90, 90);
-			ImGui::SliderFloat("sun_t", &sun_t, 0,1);
+				if (ImGui::TreeNode("Time of Day")) {
 
-		}
-		ImGui::End();
+					ImGui::SliderAngle("sun_azim", &sun_azim, 0, 360);
+					ImGui::SliderAngle("sun_elev", &sun_elev, -90, 90);
+					ImGui::SliderFloat("sun_t", &sun_t, 0,1);
+			
+					ImGui::TreePop();
+				}
 
-		if (ImGui::Begin("Game")) {
-			cam.imgui();
+				cam.imgui();
+				ImGui::PopID();
+			}
 		}
 		ImGui::End();
 	}
@@ -37,12 +44,26 @@ struct Game {
 
 		dbgdraw.clear();
 
-		view = cam.update(I, (float2)I.window_size);
+		if (I.buttons[KEY_P].went_down) {
+			view_dbg_cam = !view_dbg_cam;
+			if (view_dbg_cam) {
+				dbg_cam.pos = cam.pos;
+				dbg_cam.rot_aer = cam.rot_aer;
+			}
+		}
+
+		Flycam& viewed_cam = view_dbg_cam ? dbg_cam : cam;
+
+		view = viewed_cam.update(I, (float2)I.window_size);
+
 		dbgdraw.axis_gizmo(view, I.window_size);
 
-		for (int y=0; y<64; ++y)
-		for (int x=0; x<64; ++x) {
-			dbgdraw.quad(float3(x + 0.5f, y + 0.5f, 0), 1, lrgba(1,1,1,1));
-		}
+		if (view_dbg_cam)
+			dbgdraw.cylinder(cam.pos, 6, 8, lrgba(1,0,1,1));
+
+		//for (int y=0; y<64; ++y)
+		//for (int x=0; x<64; ++x) {
+		//	dbgdraw.quad(float3(x + 0.5f, y + 0.5f, 0), 1, lrgba(1,1,1,1));
+		//}
 	}
 };
