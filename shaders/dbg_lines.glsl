@@ -1,4 +1,4 @@
-#version 330
+#version 430
 #include "common.glsl"
 
 vs2fs vec4 vs_col;

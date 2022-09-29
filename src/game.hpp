@@ -51,6 +51,9 @@ struct Game {
 				dbg_cam.rot_aer = cam.rot_aer;
 			}
 		}
+		if (I.buttons[KEY_Q].went_down && view_dbg_cam) {
+			cam.pos = dbg_cam.pos;
+		}
 
 		Flycam& viewed_cam = view_dbg_cam ? dbg_cam : cam;
 
