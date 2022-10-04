@@ -44,7 +44,8 @@ struct glDebugDraw {
 	TriRenderer dbg_tris;
 
 	void imgui () {
-		if (imgui_Header("Debug Draw")) {
+		if (ImGui::TreeNode("Debug Draw")) {
+
 			ImGui::Checkbox("wireframe", &wireframe);
 			ImGui::SameLine();
 			ImGui::Checkbox("no cull", &wireframe_no_cull);
@@ -53,7 +54,7 @@ struct glDebugDraw {
 
 			ImGui::SliderFloat("line_width", &line_width, 1.0f, 8.0f);
 
-			ImGui::PopID();
+			ImGui::TreePop();
 		}
 	}
 
@@ -158,15 +159,22 @@ struct SkyboxRenderer {
 };
 
 struct Renderer {
-	SERIALIZE(Renderer, lighting)
+	SERIALIZE(Renderer, lighting, fbo.renderscale)
 	
 	void imgui (Input& I) {
 		if (ImGui::Begin("Misc")) {
-			ImGui::Checkbox("reverse_depth", &ogl::reverse_depth);
+			if (imgui_Header("Renderer", true)) {
 
-			debug_draw.imgui();
-			lighting.imgui();
-			terrain_renderer.imgui();
+				fbo.imgui();
+
+				ImGui::Checkbox("reverse_depth", &ogl::reverse_depth);
+
+				debug_draw.imgui();
+				lighting.imgui();
+				terrain_renderer.imgui();
+
+				ImGui::PopID();
+			}
 		}
 		ImGui::End();
 	}
@@ -190,8 +198,8 @@ struct Renderer {
 		lrgb fog_col = srgb(210, 230, 255);
 		//float _pad3;
 
-		float fog_base = 0.02f;
-		float fog_falloff = 0.1f;
+		float fog_base = 2.00f;
+		float fog_falloff = 10.0f;
 
 		void imgui () {
 			
@@ -199,8 +207,8 @@ struct Renderer {
 			imgui_ColorEdit("sky_col", &sky_col);
 			imgui_ColorEdit("fog_col", &fog_col);
 
-			ImGui::DragFloat("fog_base", &fog_base, 0.001f);
-			ImGui::DragFloat("fog_falloff", &fog_falloff, 0.01f);
+			ImGui::DragFloat("fog_base/100", &fog_base, 0.001f);
+			ImGui::DragFloat("fog_falloff/100", &fog_falloff, 0.01f);
 		}
 	};
 
@@ -218,6 +226,8 @@ struct Renderer {
 			Common common = {};
 			common.view = view;
 			common.lighting = l;
+			common.lighting.fog_base = l.fog_base / 100;
+			common.lighting.fog_falloff = l.fog_falloff / 100;
 			stream_buffer(GL_UNIFORM_BUFFER, ubo, sizeof(common), &common, GL_STREAM_DRAW);
 
 			glBindBuffer(GL_UNIFORM_BUFFER, ubo);
@@ -265,7 +275,7 @@ struct Renderer {
 		float lod_offset = 16;
 		float lod_fac    = 64;
 
-		int water_base_lod = -2;
+		int water_base_lod = -1;
 
 		float water_anim = 0;
 
@@ -546,27 +556,37 @@ struct Renderer {
 		common_ubo.set(g.view, lighting);
 
 		fbo.update(window_size);
+		// Draw to MSAA float framebuffer
 		fbo.bind();
+		{
 
-		glViewport(0, 0, window_size.x, window_size.y);
+			glViewport(0, 0, fbo.renderscale.size.x, fbo.renderscale.size.y);
 
-		glClearColor(0.01f, 0.02f, 0.03f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+			glClearColor(0.01f, 0.02f, 0.03f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		terrain_renderer.render(g, *this, window.input);
+			terrain_renderer.render(g, *this, window.input);
 		
-		skybox.draw_skybox_last(state);
+			skybox.draw_skybox_last(state);
 
-		debug_draw.render(g, state);
+			debug_draw.render(g, state);
+		}
 
-		fbo.blit_to_screen(window_size);
+		// draw to 
+		fbo.resolve_and_blit_to_screen(window_size);
+		{
+
+			glViewport(0, 0, window_size.x, window_size.y);
 		
-		if (window.trigger_screenshot && !window.screenshot_hud) take_screenshot(window_size);
+			if (window.trigger_screenshot && !window.screenshot_hud) take_screenshot(window_size);
 		
-		// draw HUD
+			// draw HUD
 
-		if (window.trigger_screenshot && window.screenshot_hud)  take_screenshot(window_size);
-		window.trigger_screenshot = false;
+			window.draw_imgui();
+
+			if (window.trigger_screenshot && window.screenshot_hud)  take_screenshot(window_size);
+			window.trigger_screenshot = false;
+		}
 	}
 };
 
