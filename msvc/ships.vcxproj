@@ -34,10 +34,18 @@
     <ClCompile Include="..\src\engine\kisslib\threadpool.cpp" />
     <ClCompile Include="..\src\engine\kisslib\timer.cpp" />
     <ClCompile Include="..\src\engine\opengl.cpp" />
+    <ClCompile Include="..\src\engine\opengl_text.cpp" />
     <ClCompile Include="..\src\ships.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\src\engine\camera.hpp" />
+    <ClInclude Include="..\src\engine\common.hpp" />
     <ClInclude Include="..\src\engine\dbgdraw.hpp" />
+    <ClInclude Include="..\src\engine\input.hpp" />
+    <ClInclude Include="..\src\engine\input_buttons.hpp" />
+    <ClInclude Include="..\src\engine\opengl.hpp" />
+    <ClInclude Include="..\src\engine\opengl_text.hpp" />
+    <ClInclude Include="..\src\engine\window.hpp" />
     <ClInclude Include="..\src\game.hpp" />
     <ClInclude Include="..\src\opengl\renderer.hpp" />
   </ItemGroup>
@@ -88,7 +96,7 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILD_DEBUG;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\engine;$(SolutionDir)..\src\engine\dear_imgui;$(SolutionDir)..\src\engine\dear_imgui_custom;$(SolutionDir)..\src\engine\kisslib\nlohmann_json\include;$(SolutionDir)..\src\engine\tracy;$(SolutionDir)..\..\libs\glfw-3.3.8.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
@@ -106,7 +114,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>false</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>BUILD_RELEASE;NDEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\engine;$(SolutionDir)..\src\engine\dear_imgui;$(SolutionDir)..\src\engine\dear_imgui_custom;$(SolutionDir)..\src\engine\kisslib\nlohmann_json\include;$(SolutionDir)..\src\engine\tracy;$(SolutionDir)..\..\libs\glfw-3.3.8.bin.WIN64\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>

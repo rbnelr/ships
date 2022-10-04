@@ -4,17 +4,22 @@
 #include "engine/dbgdraw.hpp"
 
 struct Game {
-	SERIALIZE(Game, cam, dbg_cam, view_dbg_cam)
+	SERIALIZE(Game, cam, dbg_cam, view_dbg_cam, sun_azim, sun_elev, sun_t)
 	
-	Flycam cam;
+	Flycam cam = Flycam(float3(0,0,10), 0, 5);
 	Flycam dbg_cam;
 	bool view_dbg_cam = false;
+
+	Game () {
+		cam.clip_far = 10000;
+		dbg_cam.clip_far = 10000;
+	}
 
 	DebugDraw dbgdraw;
 
 	float sun_azim = deg(30); // degrees from east, counter clockwise
-	float sun_elev = deg(70);
-	float sun_t = 0.75; // [0,1] -> [0,24] hours
+	float sun_elev = deg(14);
+	float sun_t = 0.6f; // [0,1] -> [0,24] hours
 
 	void imgui () {
 		if (ImGui::Begin("Misc")) {
@@ -30,7 +35,10 @@ struct Game {
 					ImGui::TreePop();
 				}
 
-				cam.imgui();
+				cam.imgui("cam");
+				dbg_cam.imgui("dbg_cam");
+				ImGui::Checkbox("view_dbg_cam", &view_dbg_cam);
+
 				ImGui::PopID();
 			}
 		}
@@ -39,8 +47,12 @@ struct Game {
 
 	View3D view;
 
+	float3 sun_dir;
+
 	void update (Window& window) {
 		auto& I = window.input;
+
+		sun_dir = rotate3_Z(sun_azim) * rotate3_X(sun_elev) * rotate3_Y(sun_t * deg(360)) * float3(0,0,-1);
 
 		dbgdraw.clear();
 

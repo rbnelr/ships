@@ -53,7 +53,88 @@ struct View3D {
 	vec2        inv_viewport_size;
 };
 
-// layout(std140, binding = 0) only in #version 420
-layout(std140) uniform Common {
-	View3D view;
+struct Lighting {
+	vec3 sun_dir;
+	
+	vec3 sun_col;
+	vec3 sky_col;
+	vec3 skybox_bottom_col;
+	vec3 fog_col;
+	
+	float fog_base;
+	float fog_falloff;
 };
+
+// layout(std140, binding = 0) only in #version 420
+layout(std140, binding = 0) uniform Common {
+	View3D view;
+	Lighting lighting;
+};
+
+vec3 get_skybox_light (vec3 dir_world) {
+	vec3 col = vec3(0.0);
+	//if (dir_world.z > 0.0) {
+	//	col += mix(lighting.fog_col, lighting.sky_col,
+	//		vec3(pow(smoothstep(0.0, 1.0, dir_world.z), 0.45)));
+	//} else {
+	//	col += mix(lighting.fog_col, lighting.skybox_bottom_col,
+	//		vec3(pow(smoothstep(0.0, 1.0, -dir_world.z), 0.5)));
+	//}
+	col = lighting.sky_col;
+	
+	// sun
+	float d = dot(dir_world, lighting.sun_dir);
+	
+	const float sz = 500.0;
+	float c = clamp(d * sz - (sz-1.0), 0.0, 1.0);
+	
+	col += lighting.sun_col * 2.0 * c;
+	
+	return col;
+}
+
+vec3 simple_lighting (vec3 normal) {
+	
+	float d = max(dot(lighting.sun_dir, normal), 0.0);
+	vec3 light = lighting.sun_col*2.0 * d + lighting.sky_col*0.3;
+	
+	return vec3(light);
+}
+vec3 apply_fog (vec3 pix_col, vec3 pix_pos) {
+	// from https://iquilezles.org/articles/fog/
+	// + my own research and derivation
+	
+	// TODO: properly compute extinction (out-scattering + absoption) and in-scattering
+	// seperating in-scattering may allow for more blue tint at distance
+	
+	vec3 ray_cam = pix_pos - view.cam_pos;
+	float dist = length(ray_cam);
+	ray_cam = normalize(ray_cam);
+	
+	// exponential height fog parameters
+	float a = lighting.fog_base;
+	float b = lighting.fog_falloff;
+	// view parameters
+	float c = view.cam_pos.z;
+	float d = ray_cam.z;
+	
+	// optical depth -> total "amount" of fog encountered
+	// horrible float precision at high camera offsets:
+	//  1.0 - exp(-b*d*10000)  ->  1.0 - 10^-44 -> 1.0, which results in black screen
+	//float od = (a/b) * exp(-b * c) * (1.0 - exp(-b * d * dist)) / d;
+	// this seems to fix it  TODO: better alternative?
+	float od = (a/b) * (exp(-b * c) - exp(-b * c - b * d * dist)) / d;
+	
+	// get transmittance (% of rays scattered/absorbed) from optical depth
+	// -> missing in iquilezles's code?
+	float t = exp(-od);
+	
+	// adjust color to give sun tint like iquilezles
+	float sun_amount = max(dot(ray_cam, lighting.sun_dir), 0.0);
+	vec3  col = mix(lighting.fog_col, lighting.sun_col, pow(sun_amount, 8.0)*0.5);
+	
+	//return vec3(1.0 - t);
+	
+	// lerp pixel color to fog color
+	return mix(col, pix_col, t);
+}

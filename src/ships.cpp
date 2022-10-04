@@ -7,12 +7,12 @@ struct App : IApp {
 	friend void to_json(nlohmann::ordered_json& j, App const& t) {
 		j["window"]   = t._window;
 		j["game"]     = t.game;
-		//j["renderer"] = t.renderer;
+		j["renderer"] = t.renderer;
 	}
 	friend void from_json(const nlohmann::ordered_json& j, App& t) {
 		if (j.contains("window"))   j.at("window")  .get_to(t._window);
 		if (j.contains("game"))     j.at("game")    .get_to(t.game);
-		//if (j.contains("renderer")) j.at("renderer").get_to(t.renderer);
+		if (j.contains("renderer")) j.at("renderer").get_to(t.renderer);
 	}
 
 	virtual ~App () {}
