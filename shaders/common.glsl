@@ -1,7 +1,7 @@
 
 #if _VERTEX
 	#define VS2FS out Vertex v;
-#elif _VERTEX
+#elif _FRAGMENT
 	#define VS2FS in Vertex v;
 #else
 	#define VS2FS // manually declare for geometry shaders
