@@ -1,7 +1,10 @@
 #version 430
 #include "common.glsl"
 
-vs2fs vec4 vs_col;
+struct Vertex {
+	vec4 col;
+};
+VS2FS
 
 #ifdef _VERTEX
 	layout(location = 0) in vec3  pos;
@@ -9,12 +12,12 @@ vs2fs vec4 vs_col;
 	
 	void main () {
 		gl_Position = view.world2clip * vec4(pos, 1.0);
-		vs_col   = col;
+		v.col = col;
 	}
 #endif
 #ifdef _FRAGMENT
 	out vec4 frag_col;
 	void main () {
-		frag_col = vs_col;
+		frag_col = v.col;
 	}
 #endif

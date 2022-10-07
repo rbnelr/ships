@@ -1,9 +1,10 @@
 
-#ifdef _VERTEX
-#define vs2fs out
-#endif
-#ifdef _FRAGMENT
-#define vs2fs in
+#if _VERTEX
+	#define VS2FS out Vertex v;
+#elif _VERTEX
+	#define VS2FS in Vertex v;
+#else
+	#define VS2FS // manually declare for geometry shaders
 #endif
 
 float map (float x, float a, float b) {

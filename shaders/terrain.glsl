@@ -1,10 +1,12 @@
 #version 430
 #include "common.glsl"
 
-vs2fs vec2 vs_uv;
-vs2fs vec3 vs_pos;
-vs2fs vec3 vs_normal;
-vs2fs vec3 vs_dbg;
+struct Vertex {
+	vec3 pos;
+	vec2 uv;
+	vec3 normal;
+};
+VS2FS
 
 #ifdef _VERTEX
 	layout(location = 0) in vec2  attr_pos;
@@ -22,7 +24,7 @@ vs2fs vec3 vs_dbg;
 	// center, edge and corner lod transitions and having the cpu code select them
 	// they would have to be rotated with a 2x2 matrix
 	void fix_lod_seam (inout vec2 pos) {
-		vs_dbg = vec3(0);
+		//vs_dbg = vec3(0);
 		
 		vec2 dist = min(lod_bound1 - pos, pos - lod_bound0);
 		vec2 t = clamp(1.0 - dist / quad_size, vec2(0), vec2(1));
@@ -36,7 +38,7 @@ vs2fs vec3 vs_dbg;
 			if (tm == t.x) pos.y -= shift.y * t.x;
 			else           pos.x -= shift.x * t.y;
 			
-			vs_dbg = vec3(t, 0.0);
+			//vs_dbg = vec3(t, 0.0);
 		}
 	}
 	
@@ -60,12 +62,12 @@ vs2fs vec3 vs_dbg;
 			b.z = sample_heightmap(b.xy);
 			c.z = sample_heightmap(c.xy);
 			
-			vs_normal = normalize(cross(b - pos, c - pos));
+			v.normal = normalize(cross(b - pos, c - pos));
 		}
 		
 		gl_Position = view.world2clip * vec4(pos, 1.0);
-		vs_uv  = pos.xy * inv_max_size;
-		vs_pos = pos;
+		v.pos = pos;
+		v.uv  = pos.xy * inv_max_size;
 	}
 #endif
 #ifdef _FRAGMENT
@@ -73,11 +75,11 @@ vs2fs vec3 vs_dbg;
 	
 	out vec4 frag_col;
 	void main () {
-		vec3 col = texture(terrain_diffuse, vs_uv).rgb;
+		vec3 col = texture(terrain_diffuse, v.uv).rgb;
 		//vec3 col = vec3(0.5);
 		
-		col *= simple_lighting(vs_normal);
-		col = apply_fog(col, vs_pos);
+		col *= simple_lighting(v.normal);
+		col = apply_fog(col, v.pos);
 		
 		frag_col = vec4(col, 1.0);
 	}
