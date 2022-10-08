@@ -41,7 +41,7 @@ uniform vec2  lod_bound1;
 	}
 	
 	vec3 gersner_wave (vec2 pos, out vec3 norm, float t, vec2 dir, float steep, float len) {
-		t = 0;
+		//t = 0;
 		
 		float d = dot(dir, pos);
 		

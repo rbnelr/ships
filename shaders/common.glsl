@@ -1,7 +1,7 @@
 
-#if _VERTEX
+#if defined(_VERTEX)
 	#define VS2FS out Vertex v;
-#elif _FRAGMENT
+#elif defined(_FRAGMENT)
 	#define VS2FS in Vertex v;
 #else
 	#define VS2FS // manually declare for geometry shaders
@@ -11,7 +11,8 @@ float map (float x, float a, float b) {
 	return (x - a) / (b - a);
 }
 
-const float INF			= 1. / 0.;
+const float INF			= 340282346638528859811704183484516925440.0 * 2.0;
+//const float INF			= 1. / 0.;
 
 const float PI			= 3.1415926535897932384626433832795;
 
