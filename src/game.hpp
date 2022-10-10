@@ -4,7 +4,7 @@
 #include "engine/dbgdraw.hpp"
 
 struct Game {
-	SERIALIZE(Game, cam, dbg_cam, view_dbg_cam, sun_azim, sun_elev, sun_t)
+	SERIALIZE(Game, cam, dbg_cam, view_dbg_cam, sun_azim, sun_elev, day_t, day_speed)
 	
 	Flycam cam = Flycam(float3(0,0,10), 0, 5);
 	Flycam dbg_cam;
@@ -19,7 +19,9 @@ struct Game {
 
 	float sun_azim = deg(30); // degrees from east, counter clockwise
 	float sun_elev = deg(14);
-	float sun_t = 0.6f; // [0,1] -> [0,24] hours
+	float day_t = 0.6f; // [0,1] -> [0,24] hours
+	float day_speed = 1.0f / 60.0f;
+	bool  day_pause = true;
 
 	void imgui () {
 		if (ImGui::Begin("Misc")) {
@@ -30,7 +32,10 @@ struct Game {
 
 					ImGui::SliderAngle("sun_azim", &sun_azim, 0, 360);
 					ImGui::SliderAngle("sun_elev", &sun_elev, -90, 90);
-					ImGui::SliderFloat("sun_t", &sun_t, 0,1);
+					ImGui::SliderFloat("day_t", &day_t, 0,1);
+
+					ImGui::SliderFloat("day_speed", &day_speed, 0, 0.25f, "%.3f", ImGuiSliderFlags_Logarithmic);
+					ImGui::Checkbox("day_pause", &day_pause);
 			
 					ImGui::TreePop();
 				}
@@ -52,7 +57,8 @@ struct Game {
 	void update (Window& window) {
 		auto& I = window.input;
 
-		sun_dir = rotate3_Z(sun_azim) * rotate3_X(sun_elev) * rotate3_Y(sun_t * deg(360)) * float3(0,0,-1);
+		if (!day_pause) day_t = wrap(day_t + day_speed * I.dt, 1.0f);
+		sun_dir = rotate3_Z(sun_azim) * rotate3_X(sun_elev) * rotate3_Y(day_t * deg(360)) * float3(0,0,-1);
 
 		dbgdraw.clear();
 

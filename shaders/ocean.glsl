@@ -67,12 +67,12 @@ uniform vec2  lod_bound1;
 		vec3 p = vec3(pos, 0.0);
 		vec3 norm = vec3(0.0,0.0, 1.0);
 		
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
-		//p += gersner_wave(pos, water_anim, normalize(vec2(7, -1)), 0.18, 9.0);
-		//p += gersner_wave(pos, water_anim, normalize(vec2(-7.3, 8)), 0.15, 8.7);
-		//p += gersner_wave(pos, water_anim, normalize(vec2(7.15, 1.2)), 0.14, 4.3);
-		//p += gersner_wave(pos, water_anim, normalize(vec2(17.1, 11)), 0.1, 1.3);
-		//p += gersner_wave(pos, water_anim, normalize(vec2(6.1, -13.1)), 0.1, 1.1);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.18, 9.0);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(-7.3, 8)), 0.15, 8.7);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7.15, 1.2)), 0.14, 4.3);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(17.1, 11)), 0.1, 1.3);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(6.1, -13.1)), 0.1, 1.1);
 		
 		v.normal = norm;
 		
@@ -87,16 +87,16 @@ uniform vec2  lod_bound1;
 		
 		vec3 a = wave_vertex(pos.xy);
 		
-		//{ // numerical derivative of heightmap for normals
-		//	float eps = max(quad_size, 2.0);
-		//	vec3 b = vec3(pos.x + eps, pos.y, 0.0);
-		//	vec3 c = vec3(pos.x, pos.y + eps, 0.0);
-		//	
-		//	b = wave_vertex(b.xy);
-		//	c = wave_vertex(c.xy);
-		//	
-		//	vs_normal = normalize(cross(b - a, c - a));
-		//}
+		{ // numerical derivative of heightmap for normals
+			float eps = max(quad_size, 2.0);
+			vec3 b = vec3(pos.x + eps, pos.y, 0.0);
+			vec3 c = vec3(pos.x, pos.y + eps, 0.0);
+			
+			b = wave_vertex(b.xy);
+			c = wave_vertex(c.xy);
+			
+			v.normal = normalize(cross(b - a, c - a));
+		}
 		
 		gl_Position = view.world2clip * vec4(a, 1.0);
 		v.pos = a;
@@ -107,16 +107,18 @@ uniform vec2  lod_bound1;
 	
 	out vec4 frag_col;
 	void main () {
-		vec2 orig_pos = v.uv / inv_max_size;
+		vec3 norm = normalize(v.normal);
 		
-		vec3 col = vec3(0.12, 0.2, 1.0);
-		col *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
+		vec3 col = vec3(1.0, 1.0, 1.0);
 		
-		col *= simple_lighting(v.normal);
+		//vec2 orig_pos = v.uv / inv_max_size;
+		//col *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
+		
+		col *= water_lighting(v.pos, norm);
 		
 		col = apply_fog(col, v.pos);
 		
-		frag_col = vec4(v.normal.xxx, 1.0);
+		frag_col = vec4(col, 1.0);
 	}
 #endif
 

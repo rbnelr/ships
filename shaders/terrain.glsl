@@ -78,7 +78,7 @@ VS2FS
 		vec3 col = texture(terrain_diffuse, v.uv).rgb;
 		//vec3 col = vec3(0.5);
 		
-		col *= simple_lighting(v.normal);
+		col *= simple_lighting(v.pos, v.normal);
 		col = apply_fog(col, v.pos);
 		
 		frag_col = vec4(col, 1.0);

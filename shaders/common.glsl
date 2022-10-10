@@ -28,7 +28,6 @@ const float HALF_SQRT_3	= 0.86602540378443864676372317075294;
 const float INV_SQRT_2	= 0.70710678118654752440084436210485;
 const float INV_SQRT_3	= 0.5773502691896257645091487805019;
 
-
 struct View3D {
 	// forward VP matrices
 	mat4        world2clip;
@@ -73,7 +72,18 @@ layout(std140, binding = 0) uniform Common {
 	Lighting lighting;
 };
 
+float sun_strength () {
+	float a = map(lighting.sun_dir.z, 0.5, -0.1);
+	return smoothstep(1.0, 0.0, a);
+}
+vec3 atmos_scattering () {
+	float a = map(lighting.sun_dir.z, 0.5, -0.05);
+	return vec3(0.0, 0.6, 0.7) * smoothstep(0.0, 1.0, a);
+}
+
 vec3 get_skybox_light (vec3 dir_world) {
+	float stren = sun_strength();
+	
 	vec3 col = vec3(0.0);
 	//if (dir_world.z > 0.0) {
 	//	col += mix(lighting.fog_col, lighting.sky_col,
@@ -82,7 +92,10 @@ vec3 get_skybox_light (vec3 dir_world) {
 	//	col += mix(lighting.fog_col, lighting.skybox_bottom_col,
 	//		vec3(pow(smoothstep(0.0, 1.0, -dir_world.z), 0.5)));
 	//}
-	col = lighting.sky_col;
+	col = lighting.sky_col * (stren + 0.008);
+	
+	vec3 sun = lighting.sun_col - atmos_scattering();
+	sun *= stren;
 	
 	// sun
 	float d = dot(dir_world, lighting.sun_dir);
@@ -90,18 +103,14 @@ vec3 get_skybox_light (vec3 dir_world) {
 	const float sz = 500.0;
 	float c = clamp(d * sz - (sz-1.0), 0.0, 1.0);
 	
-	col += lighting.sun_col * 2.0 * c;
+	col += sun * 20.0 * c;
+	
+	//float bloom_amount = max(dot(dir_world, lighting.sun_dir) - 0.5, 0.0);
+	//col += bloom_amount * sun * 0.3;
 	
 	return col;
-}
+} 
 
-vec3 simple_lighting (vec3 normal) {
-	
-	float d = max(dot(lighting.sun_dir, normal), 0.0);
-	vec3 light = lighting.sun_col*2.0 * d + lighting.sky_col*0.3;
-	
-	return vec3(light);
-}
 vec3 apply_fog (vec3 pix_col, vec3 pix_pos) {
 	// from https://iquilezles.org/articles/fog/
 	// + my own research and derivation
@@ -112,6 +121,8 @@ vec3 apply_fog (vec3 pix_col, vec3 pix_pos) {
 	vec3 ray_cam = pix_pos - view.cam_pos;
 	float dist = length(ray_cam);
 	ray_cam = normalize(ray_cam);
+	
+	float stren = sun_strength();
 	
 	// exponential height fog parameters
 	float a = lighting.fog_base;
@@ -133,10 +144,50 @@ vec3 apply_fog (vec3 pix_col, vec3 pix_pos) {
 	
 	// adjust color to give sun tint like iquilezles
 	float sun_amount = max(dot(ray_cam, lighting.sun_dir), 0.0);
-	vec3  col = mix(lighting.fog_col, lighting.sun_col, pow(sun_amount, 8.0)*0.5);
+	//vec3  col = mix(lighting.fog_col, lighting.sun_col, pow(sun_amount, 8.0) * 0.5);
+	vec3 sun = lighting.sun_col - atmos_scattering();
+	
+	vec3 col = mix(lighting.fog_col, sun, pow(sun_amount, 8.0) * 0.7);
 	
 	//return vec3(1.0 - t);
 	
 	// lerp pixel color to fog color
-	return mix(col, pix_col, t);
+	return mix(col * stren, pix_col, t);
+}
+
+float fresnel (float dotVN, float F0) {
+	float x = clamp(1.0 - dotVN, 0.0, 1.0);
+	float x2 = x*x;
+	return F0 + ((1.0 - F0) * x2 * x2 * x);
+}
+float fresnel_roughness (float dotVN, float F0, float roughness) {
+	float x = clamp(1.0 - dotVN, 0.0, 1.0);
+	float x2 = x*x;
+	return F0 + ((max((1.0 - roughness), F0) - F0) * x2 * x2 * x);
+}
+
+vec3 simple_lighting (vec3 pos, vec3 normal) {
+	float stren = sun_strength();
+	
+	//vec3 dir = normalize(pos - view.cam_pos);
+	
+	float d = max(dot(lighting.sun_dir, normal), 0.0);
+	vec3 diffuse =
+		(stren + 0.008) * lighting.sun_col*2.0 * d +
+		(stren + 0.008) * lighting.sky_col*0.3;
+	
+	return vec3(diffuse);
+}
+vec3 water_lighting (vec3 pos, vec3 normal) {
+	vec3 dir = normalize(pos - view.cam_pos);
+	
+	//float d = max(dot(lighting.sun_dir, normal), 0.0);
+	//vec3 diffuse = lighting.sun_col*2.0 * d + lighting.sky_col*0.3;
+	
+	vec3 a = reflect(normal, dir);
+	vec3 specular = get_skybox_light(a);
+	
+	float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.0);
+	
+	return vec3(mix(vec3(0.0), specular, F));
 }
