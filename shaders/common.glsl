@@ -72,6 +72,8 @@ layout(std140, binding = 0) uniform Common {
 	Lighting lighting;
 };
 
+uniform sampler2D clouds;
+
 float sun_strength () {
 	float a = map(lighting.sun_dir.z, 0.5, -0.1);
 	return smoothstep(1.0, 0.0, a);
@@ -81,7 +83,7 @@ vec3 atmos_scattering () {
 	return vec3(0.0, 0.6, 0.7) * smoothstep(0.0, 1.0, a);
 }
 
-vec3 get_skybox_light (vec3 dir_world) {
+vec3 get_skybox_light (vec3 view_point, vec3 dir_world) {
 	float stren = sun_strength();
 	
 	vec3 col = vec3(0.0);
@@ -104,6 +106,21 @@ vec3 get_skybox_light (vec3 dir_world) {
 	float c = clamp(d * sz - (sz-1.0), 0.0, 1.0);
 	
 	col += sun * 20.0 * c;
+	
+	{
+		float clouds_z = 200.0;
+		
+		float t = (clouds_z - view_point.z) / dir_world.z;
+		if (dir_world.z != 0.0 && t >= 0.0) {
+			vec3 pos = view_point + t * dir_world;
+			
+			pos /= 1024.0;
+			vec4 c = texture(clouds, pos.xy);
+			c.rgb *= stren;
+			
+			col = mix(col.rgb, c.rgb, vec3(c.a));
+		}
+	}
 	
 	//float bloom_amount = max(dot(dir_world, lighting.sun_dir) - 0.5, 0.0);
 	//col += bloom_amount * sun * 0.3;
@@ -184,8 +201,8 @@ vec3 water_lighting (vec3 pos, vec3 normal) {
 	//float d = max(dot(lighting.sun_dir, normal), 0.0);
 	//vec3 diffuse = lighting.sun_col*2.0 * d + lighting.sky_col*0.3;
 	
-	vec3 a = reflect(normal, dir);
-	vec3 specular = get_skybox_light(a);
+	vec3 a = reflect(dir, normal);
+	vec3 specular = get_skybox_light(pos, a);
 	
 	float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.0);
 	

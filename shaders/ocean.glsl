@@ -68,6 +68,7 @@ uniform vec2  lod_bound1;
 		vec3 norm = vec3(0.0,0.0, 1.0);
 		
 		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
+		
 		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.18, 9.0);
 		p += gersner_wave(pos, norm, water_anim, normalize(vec2(-7.3, 8)), 0.15, 8.7);
 		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7.15, 1.2)), 0.14, 4.3);

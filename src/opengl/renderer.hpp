@@ -64,100 +64,6 @@ struct glDebugDraw {
 	}
 };
 
-struct SkyboxRenderer {
-	
-	Shader* shad = g_shaders.compile("skybox");
-
-	struct Vertex {
-		float3 pos;
-		
-		static void attrib (int idx) {
-			ATTRIB(idx++, GL_FLOAT,3, Vertex, pos);
-		}
-	};
-	VertexBufferI skybox = vertex_bufferI<Vertex>("skybox");
-
-	static constexpr float3 verts[] = {
-		{-1,-1,-1},
-		{+1,-1,-1},
-		{-1,+1,-1},
-		{+1,+1,-1},
-		{-1,-1,+1},
-		{+1,-1,+1},
-		{-1,+1,+1},
-		{+1,+1,+1},
-	};
-	static constexpr uint16_t indices[] = {
-		// -Z 
-		QUAD_INDICES(0,1,3,2),
-		// +X
-		QUAD_INDICES(3,1,5,7),
-		// +Y
-		QUAD_INDICES(2,3,7,6),
-		// -X
-		QUAD_INDICES(0,2,6,4),
-		// -Y
-		QUAD_INDICES(1,0,4,5),
-		// +Z
-		QUAD_INDICES(6,7,5,4),
-	};
-
-	SkyboxRenderer () {
-		skybox.upload(verts, ARRLEN(verts), indices, ARRLEN(indices));
-	}
-	
-#if 0
-	// draw before everything else
-	// shader can use vec4(xyz, 1.0) clip coords
-	void draw_skybox_first (StateManager& state) {
-		if (!shad->prog) return;
-
-		PipelineState s;
-		s.depth_test = false;
-		s.depth_write = false;
-		s.blend_enable = false;
-		state.set(s);
-
-		glUseProgram(shad->prog);
-
-		state.bind_textures(shad, {
-			
-		});
-		
-		glBindVertexArray(skybox.vao);
-
-		glDrawElements(GL_TRIANGLES, ARRLEN(indices), GL_UNSIGNED_SHORT, (void*)0);
-	}
-#else
-	// draw after everything else
-	// advantage: early-z avoids drawing skybox shader behind ground, might be better with scattering skybox shader
-	// shader needs to use vec4(xyz, 0.0) clip coords to draw at infinity -> need to clip at far plane with GL_DEPTH_CLAMP
-	void draw_skybox_last (StateManager& state) {
-		if (!shad->prog) return;
-		
-		PipelineState s;
-		s.depth_test   = true;
-		s.depth_write  = false;
-		s.blend_enable = false;
-		state.set_no_override(s);
-
-		glEnable(GL_DEPTH_CLAMP);
-
-		glUseProgram(shad->prog);
-
-		state.bind_textures(shad, {
-			
-		});
-		
-		glBindVertexArray(skybox.vao);
-
-		glDrawElements(GL_TRIANGLES, ARRLEN(indices), GL_UNSIGNED_SHORT, (void*)0);
-
-		glDisable(GL_DEPTH_CLAMP);
-	}
-#endif
-};
-
 struct Renderer {
 	SERIALIZE(Renderer, lighting, fbo.renderscale)
 	
@@ -239,14 +145,110 @@ struct Renderer {
 
 	FramebufferTexture fbo;
 
-	SkyboxRenderer skybox;
-
-	Sampler sampler_heightmap     = {"sampler_heightmap"};
-	Sampler sampler_heightmap_col = {"sampler_heightmap_col"};
+	Sampler sampler_heightmap  = {"sampler_heightmap"};
+	Sampler sampler_normal     = {"sampler_normal"};
 
 	glDebugDraw debug_draw;
 
 	Lighting lighting;
+
+	Texture2D clouds = {"clouds"};
+
+	
+	struct SkyboxRenderer {
+	
+		Shader* shad = g_shaders.compile("skybox");
+
+		struct Vertex {
+			float3 pos;
+		
+			static void attrib (int idx) {
+				ATTRIB(idx++, GL_FLOAT,3, Vertex, pos);
+			}
+		};
+		VertexBufferI skybox = vertex_bufferI<Vertex>("skybox");
+
+		static constexpr float3 verts[] = {
+			{-1,-1,-1},
+			{+1,-1,-1},
+			{-1,+1,-1},
+			{+1,+1,-1},
+			{-1,-1,+1},
+			{+1,-1,+1},
+			{-1,+1,+1},
+			{+1,+1,+1},
+		};
+		static constexpr uint16_t indices[] = {
+			// -Z 
+			QUAD_INDICES(0,1,3,2),
+			// +X
+			QUAD_INDICES(3,1,5,7),
+			// +Y
+			QUAD_INDICES(2,3,7,6),
+			// -X
+			QUAD_INDICES(0,2,6,4),
+			// -Y
+			QUAD_INDICES(1,0,4,5),
+			// +Z
+			QUAD_INDICES(6,7,5,4),
+		};
+
+		SkyboxRenderer () {
+			skybox.upload(verts, ARRLEN(verts), indices, ARRLEN(indices));
+		}
+	
+	#if 0
+		// draw before everything else
+		// shader can use vec4(xyz, 1.0) clip coords
+		void draw_skybox_first (StateManager& state) {
+			if (!shad->prog) return;
+
+			PipelineState s;
+			s.depth_test = false;
+			s.depth_write = false;
+			s.blend_enable = false;
+			state.set(s);
+
+			glUseProgram(shad->prog);
+
+			state.bind_textures(shad, {
+			
+			});
+		
+			glBindVertexArray(skybox.vao);
+
+			glDrawElements(GL_TRIANGLES, ARRLEN(indices), GL_UNSIGNED_SHORT, (void*)0);
+		}
+	#else
+		// draw after everything else
+		// advantage: early-z avoids drawing skybox shader behind ground, might be better with scattering skybox shader
+		// shader needs to use vec4(xyz, 0.0) clip coords to draw at infinity -> need to clip at far plane with GL_DEPTH_CLAMP
+		void draw_skybox_last (StateManager& state, Renderer& r) {
+			if (!shad->prog) return;
+		
+			PipelineState s;
+			s.depth_test   = true;
+			s.depth_write  = false;
+			s.blend_enable = false;
+			state.set_no_override(s);
+
+			glEnable(GL_DEPTH_CLAMP);
+
+			glUseProgram(shad->prog);
+
+			state.bind_textures(shad, {
+				{ "clouds", r.clouds, r.sampler_normal }
+			});
+		
+			glBindVertexArray(skybox.vao);
+
+			glDrawElements(GL_TRIANGLES, ARRLEN(indices), GL_UNSIGNED_SHORT, (void*)0);
+
+			glDisable(GL_DEPTH_CLAMP);
+		}
+	#endif
+	};
+	SkyboxRenderer skybox;
 
 	struct TerrainRenderer {
 		
@@ -299,32 +301,8 @@ struct Renderer {
 		}
 
 		void upload_heightmap () {
-			{
-				Image<float> img;
-				if (!Image<float>::load_from_file(heightmap_filename, &img)) {
-					assert(false);
-					return;
-				}
-
-				glBindTexture(GL_TEXTURE_2D, heightmap);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_R32F, img.size.x, img.size.y, 0, GL_RED, GL_FLOAT, img.pixels);
-
-				glGenerateMipmap(GL_TEXTURE_2D);
-				glBindTexture(GL_TEXTURE_2D, 0);
-			}
-			{
-				Image<srgb8> img;
-				if (!Image<srgb8>::load_from_file(diffuse_filename, &img)) {
-					assert(false);
-					return;
-				}
-
-				glBindTexture(GL_TEXTURE_2D, terrain_diffuse);
-				glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8, img.size.x, img.size.y, 0, GL_RGB, GL_UNSIGNED_BYTE, img.pixels);
-
-				glGenerateMipmap(GL_TEXTURE_2D);
-				glBindTexture(GL_TEXTURE_2D, 0);
-			}
+			if (!upload_texture2D<float>(heightmap, heightmap_filename, false)) assert(false);
+			if (!upload_texture2D<srgb8>(terrain_diffuse, diffuse_filename, true)) assert(false);
 		}
 	
 		struct TerrainVertex {
@@ -467,8 +445,9 @@ struct Renderer {
 				glUseProgram(shad_terrain->prog);
 
 				r.state.bind_textures(shad_terrain, {
+					{ "clouds", r.clouds, r.sampler_normal },
 					{"heightmap", heightmap, r.sampler_heightmap},
-					{"terrain_diffuse", terrain_diffuse, r.sampler_heightmap_col},
+					{"terrain_diffuse", terrain_diffuse, r.sampler_normal},
 				});
 			
 				shad_terrain->set_uniform("inv_max_size", 1.0f / float2((float)MAP_SZ));
@@ -492,7 +471,7 @@ struct Renderer {
 				glUseProgram(shad_water->prog);
 
 				r.state.bind_textures(shad_water, {
-
+					{ "clouds", r.clouds, r.sampler_normal },
 				});
 			
 				shad_water->set_uniform("water_anim", water_anim);
@@ -524,16 +503,18 @@ struct Renderer {
 			glSamplerParameterf(sampler_heightmap, GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
 		}
 		{
-			glSamplerParameteri(sampler_heightmap_col, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glSamplerParameteri(sampler_heightmap_col, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+			glSamplerParameteri(sampler_normal, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+			glSamplerParameteri(sampler_normal, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-			//glSamplerParameteri(sampler_heightmap_col, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			//glSamplerParameteri(sampler_heightmap_col, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glSamplerParameteri(sampler_heightmap_col, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glSamplerParameteri(sampler_heightmap_col, GL_TEXTURE_WRAP_T, GL_REPEAT);
+			//glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+			//glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+			glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_S, GL_REPEAT);
+			glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_T, GL_REPEAT);
 			
-			glSamplerParameterf(sampler_heightmap_col, GL_TEXTURE_MAX_ANISOTROPY, max_aniso);
+			glSamplerParameterf(sampler_normal, GL_TEXTURE_MAX_ANISOTROPY, max_aniso);
 		}
+
+		if (!upload_texture2D<srgba8>(clouds, "textures/clouds.png")) assert(false);
 	}
 
 	void render (Window& window, Game& g, int2 window_size) {
@@ -567,7 +548,7 @@ struct Renderer {
 
 			terrain_renderer.render(g, *this, window.input);
 		
-			skybox.draw_skybox_last(state);
+			skybox.draw_skybox_last(state, *this);
 
 			debug_draw.render(g, state);
 		}
