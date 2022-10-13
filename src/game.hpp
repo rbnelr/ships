@@ -24,6 +24,8 @@ struct Game {
 	bool  day_pause = true;
 
 	void imgui () {
+		ZoneScoped;
+
 		if (ImGui::Begin("Misc")) {
 			
 			if (imgui_Header("Game", true)) {
@@ -55,6 +57,8 @@ struct Game {
 	float3 sun_dir;
 
 	void update (Window& window) {
+		ZoneScoped;
+
 		auto& I = window.input;
 
 		if (!day_pause) day_t = wrap(day_t + day_speed * I.dt, 1.0f);

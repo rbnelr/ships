@@ -122,35 +122,3 @@ uniform vec2  lod_bound1;
 		frag_col = vec4(col, 1.0);
 	}
 #endif
-
-#ifdef _GEOMERTY
-layout(triangles) in;
-
-layout(line_strip, max_vertices=6) out;
-
-uniform float normal_length = 0.2;
-
-in Vertex vs[];
-out Vertex fs;
-
-void main () {
-	int i;
-	for (i=0; i<gl_in.length(); i++) {
-		//vec3 pos_clip = gl_in[i].gl_Position.xyz;
-		vec3 pos = vs[i].pos;
-		vec3 norm = vs[i].normal;
-		
-		gl_Position = view.world2clip * vec4(pos, 1.0);
-		fs = vs[i];
-		EmitVertex();
-		
-		vec3 pos2 = pos + normal * normal_length;
-		gl_Position = view.world2clip * vec4(pos2, 1.0);
-		fs = vs[i];
-		fs.pos = pos2;
-		EmitVertex();
-
-		EndPrimitive();
-	}
-}
-#endif

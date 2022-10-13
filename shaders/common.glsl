@@ -3,8 +3,6 @@
 	#define VS2FS out Vertex v;
 #elif defined(_FRAGMENT)
 	#define VS2FS in Vertex v;
-#else
-	#define VS2FS // manually declare for geometry shaders
 #endif
 
 float map (float x, float a, float b) {
@@ -80,21 +78,13 @@ float sun_strength () {
 }
 vec3 atmos_scattering () {
 	float a = map(lighting.sun_dir.z, 0.5, -0.05);
-	return vec3(0.0, 0.6, 0.7) * smoothstep(0.0, 1.0, a);
+	return vec3(0.0, 0.75, 0.8) * smoothstep(0.0, 1.0, a);
 }
 
 vec3 get_skybox_light (vec3 view_point, vec3 dir_world) {
 	float stren = sun_strength();
 	
-	vec3 col = vec3(0.0);
-	//if (dir_world.z > 0.0) {
-	//	col += mix(lighting.fog_col, lighting.sky_col,
-	//		vec3(pow(smoothstep(0.0, 1.0, dir_world.z), 0.45)));
-	//} else {
-	//	col += mix(lighting.fog_col, lighting.skybox_bottom_col,
-	//		vec3(pow(smoothstep(0.0, 1.0, -dir_world.z), 0.5)));
-	//}
-	col = lighting.sky_col * (stren + 0.008);
+	vec3 col = lighting.sky_col * (stren + 0.008);
 	
 	vec3 sun = lighting.sun_col - atmos_scattering();
 	sun *= stren;
@@ -122,8 +112,8 @@ vec3 get_skybox_light (vec3 view_point, vec3 dir_world) {
 		}
 	}
 	
-	//float bloom_amount = max(dot(dir_world, lighting.sun_dir) - 0.5, 0.0);
-	//col += bloom_amount * sun * 0.3;
+	float bloom_amount = max(dot(dir_world, lighting.sun_dir) - 0.5, 0.0);
+	col += bloom_amount * sun * 0.3;
 	
 	return col;
 } 
@@ -186,11 +176,13 @@ float fresnel_roughness (float dotVN, float F0, float roughness) {
 vec3 simple_lighting (vec3 pos, vec3 normal) {
 	float stren = sun_strength();
 	
+	vec3 sun = lighting.sun_col - atmos_scattering();
+	
 	//vec3 dir = normalize(pos - view.cam_pos);
 	
 	float d = max(dot(lighting.sun_dir, normal), 0.0);
 	vec3 diffuse =
-		(stren + 0.008) * lighting.sun_col*2.0 * d +
+		(stren        ) * sun * d +
 		(stren + 0.008) * lighting.sky_col*0.3;
 	
 	return vec3(diffuse);
@@ -204,7 +196,7 @@ vec3 water_lighting (vec3 pos, vec3 normal) {
 	vec3 a = reflect(dir, normal);
 	vec3 specular = get_skybox_light(pos, a);
 	
-	float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.0);
+	float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.1);
 	
 	return vec3(mix(vec3(0.0), specular, F));
 }

@@ -59,13 +59,15 @@ struct glDebugDraw {
 	}
 
 	void render (Game& g, StateManager& state) {
+		OGL_TRACE("debug_draw");
+
 		dbg_lines.render(state, g.dbgdraw.lines);
 		dbg_tris.render(state, g.dbgdraw.tris);
 	}
 };
 
 struct Renderer {
-	SERIALIZE(Renderer, lighting, fbo.renderscale)
+	SERIALIZE(Renderer, lighting, fbo.renderscale, exposure)
 	
 	void imgui (Input& I) {
 		if (ImGui::Begin("Misc")) {
@@ -79,6 +81,8 @@ struct Renderer {
 				lighting.imgui();
 				terrain_renderer.imgui();
 
+				ImGui::SliderFloat("exposure", &exposure, 0.02f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
+
 				ImGui::PopID();
 			}
 		}
@@ -87,6 +91,18 @@ struct Renderer {
 
 	StateManager state;
 	
+	Vao dummy_vao = {"dummy_vao"};
+
+	void draw_fullscreen_triangle () {
+		PipelineState s;
+		s.depth_write  = false;
+		s.blend_enable = false;
+		state.set_no_override(s);
+				
+		glBindVertexArray(dummy_vao);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+	}
+
 	struct Lighting {
 		SERIALIZE(Lighting, sun_col, sky_col, fog_col, fog_base, fog_falloff)
 
@@ -145,8 +161,8 @@ struct Renderer {
 
 	FramebufferTexture fbo;
 
-	Sampler sampler_heightmap  = {"sampler_heightmap"};
-	Sampler sampler_normal     = {"sampler_normal"};
+	Sampler sampler_heightmap  = sampler("sampler_heightmap", FILTER_BILINEAR,  GL_REPEAT);
+	Sampler sampler_normal     = sampler("sampler_normal",    FILTER_MIPMAPPED, GL_REPEAT, true);
 
 	glDebugDraw debug_draw;
 
@@ -154,6 +170,11 @@ struct Renderer {
 
 	Texture2D clouds = {"clouds"};
 
+	float exposure = 1.0f;
+	
+	Renderer () {
+		if (!upload_texture2D<srgba8>(clouds, "textures/clouds.png")) assert(false);
+	}
 	
 	struct SkyboxRenderer {
 	
@@ -202,6 +223,8 @@ struct Renderer {
 		// shader can use vec4(xyz, 1.0) clip coords
 		void draw_skybox_first (StateManager& state) {
 			if (!shad->prog) return;
+			
+			OGL_TRACE("draw_skybox");
 
 			PipelineState s;
 			s.depth_test = false;
@@ -226,6 +249,8 @@ struct Renderer {
 		void draw_skybox_last (StateManager& state, Renderer& r) {
 			if (!shad->prog) return;
 		
+			OGL_TRACE("draw_skybox");
+
 			PipelineState s;
 			s.depth_test   = true;
 			s.depth_write  = false;
@@ -320,6 +345,8 @@ struct Renderer {
 
 		template <typename FUNC>
 		void lodded_chunks (Game& g, Shader* shad, int base_lod, bool dbg, FUNC chunk) {
+			ZoneScoped;
+
 			float2 lod_center = (float2)g.cam.pos;
 			// TODO: adjust for terrain height? -> abs distance to full heightmap range might be reasonable
 			// -> finding correct "distance" to heightmap terrain is somewhat impossible
@@ -332,6 +359,7 @@ struct Renderer {
 
 			// iterate lods
 			for (int lod=base_lod;; lod++) {
+				ZoneScopedN("lod");
 
 				int sz = lod >= 0 ? TERRAIN_CHUNK_SZ << lod : TERRAIN_CHUNK_SZ >> (-lod);
 				if (sz > MAP_SZ*2)
@@ -427,7 +455,8 @@ struct Renderer {
 			chunk_indices = idx_count;
 		}
 		void render (Game& g, Renderer& r, Input& I) {
-			
+			ZoneScoped;
+
 			water_anim += I.dt;
 			water_anim = fmodf(water_anim, 32.0f);
 
@@ -487,38 +516,11 @@ struct Renderer {
 	};
 	TerrainRenderer terrain_renderer;
 
-	Renderer () {
-		float max_aniso = 1.0f;
-		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max_aniso);
-
-		{
-			glSamplerParameteri(sampler_heightmap, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glSamplerParameteri(sampler_heightmap, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-			//glSamplerParameteri(sampler_heightmap, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			//glSamplerParameteri(sampler_heightmap, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glSamplerParameteri(sampler_heightmap, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glSamplerParameteri(sampler_heightmap, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			
-			glSamplerParameterf(sampler_heightmap, GL_TEXTURE_MAX_ANISOTROPY, 1.0f);
-		}
-		{
-			glSamplerParameteri(sampler_normal, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-			glSamplerParameteri(sampler_normal, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-			//glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-			//glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-			glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_S, GL_REPEAT);
-			glSamplerParameteri(sampler_normal, GL_TEXTURE_WRAP_T, GL_REPEAT);
-			
-			glSamplerParameterf(sampler_normal, GL_TEXTURE_MAX_ANISOTROPY, max_aniso);
-		}
-
-		if (!upload_texture2D<srgba8>(clouds, "textures/clouds.png")) assert(false);
-	}
+	Shader* shad_postprocess = g_shaders.compile("postprocess");
 
 	void render (Window& window, Game& g, int2 window_size) {
-		
+		ZoneScoped;
+
 		{
 			//OGL_TRACE("set state defaults");
 
@@ -540,7 +542,6 @@ struct Renderer {
 		// Draw to MSAA float framebuffer
 		fbo.bind();
 		{
-
 			glViewport(0, 0, fbo.renderscale.size.x, fbo.renderscale.size.y);
 
 			glClearColor(0.01f, 0.02f, 0.03f, 1.0f);
@@ -553,11 +554,26 @@ struct Renderer {
 			debug_draw.render(g, state);
 		}
 
-		// draw to 
-		fbo.resolve_and_blit_to_screen(window_size);
-		{
+		// 
+		fbo.resolve(window_size);
 
-			glViewport(0, 0, window_size.x, window_size.y);
+		glViewport(0, 0, window_size.x, window_size.y);
+		{
+			if (shad_postprocess->prog) {
+				OGL_TRACE("postprocess");
+				
+				glUseProgram(shad_postprocess->prog);
+				
+				shad_postprocess->set_uniform("exposure", exposure);
+
+				state.bind_textures(shad_postprocess, {
+					{ "fbo_col", { GL_TEXTURE_2D, fbo.fbo.col }, fbo.get_sampler() }
+				});
+				draw_fullscreen_triangle();
+			}
+		}
+
+		{
 		
 			if (window.trigger_screenshot && !window.screenshot_hud) take_screenshot(window_size);
 		

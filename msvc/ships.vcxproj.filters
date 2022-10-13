@@ -74,6 +74,9 @@
     <ClCompile Include="..\src\engine\opengl_text.cpp">
       <Filter>engine</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\engine\tracy\TracyClient.cpp">
+      <Filter>engine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="engine">
