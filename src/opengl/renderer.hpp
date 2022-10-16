@@ -2,11 +2,7 @@
 #include "common.hpp"
 #include "game.hpp"
 #include "engine/opengl.hpp"
-
-// D---C
-// | / |
-// A---B
-#define QUAD_INDICES(a,b,c,d) b,c,a, a,c,d
+#include "gl_dbgdraw.hpp"
 
 namespace ogl {
 
@@ -32,39 +28,6 @@ void push_quad2 (uint16_t* out, uint16_t a, uint16_t b, uint16_t c, uint16_t d) 
 	out[4] = b;
 	out[5] = c;
 }
-
-struct glDebugDraw {
-	bool wireframe          = false;
-	bool wireframe_no_cull  = false;
-	bool wireframe_no_blend = true;
-
-	float line_width = 1;
-	
-	LineRenderer dbg_lines;
-	TriRenderer dbg_tris;
-
-	void imgui () {
-		if (ImGui::TreeNode("Debug Draw")) {
-
-			ImGui::Checkbox("wireframe", &wireframe);
-			ImGui::SameLine();
-			ImGui::Checkbox("no cull", &wireframe_no_cull);
-			ImGui::SameLine();
-			ImGui::Checkbox("no blend", &wireframe_no_blend);
-
-			ImGui::SliderFloat("line_width", &line_width, 1.0f, 8.0f);
-
-			ImGui::TreePop();
-		}
-	}
-
-	void render (Game& g, StateManager& state) {
-		OGL_TRACE("debug_draw");
-
-		dbg_lines.render(state, g.dbgdraw.lines);
-		dbg_tris.render(state, g.dbgdraw.tris);
-	}
-};
 
 struct Renderer {
 	SERIALIZE(Renderer, lighting, fbo.renderscale, exposure)
@@ -183,7 +146,7 @@ struct Renderer {
 		struct Vertex {
 			float3 pos;
 		
-			static void attrib (int idx) {
+			ATTRIBUTES {
 				ATTRIB(idx++, GL_FLOAT,3, Vertex, pos);
 			}
 		};
@@ -333,7 +296,7 @@ struct Renderer {
 		struct TerrainVertex {
 			float2 pos;
 
-			static void attrib (int idx) {
+			ATTRIBUTES {
 				ATTRIB(idx++, GL_FLOAT,2, TerrainVertex, pos);
 			}
 		};
@@ -551,7 +514,7 @@ struct Renderer {
 		
 			skybox.draw_skybox_last(state, *this);
 
-			debug_draw.render(g, state);
+			debug_draw.render(state, g.dbgdraw);
 		}
 
 		// 
