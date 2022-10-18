@@ -71,13 +71,13 @@ struct glDebugDraw {
 
 		struct Lines {
 			glDrawArraysIndirectCommand cmd;
-			IndirectLineVertex vertices[4096*4];
+			IndirectLineVertex vertices[4096*2];
 		} lines;
 	
 		//struct WireInstances {
 		//	glDrawElementsIndirectCommand cmd;
 		//	uint32_t _pad[3]; // padding for std430 alignment
-		//	IndirectWireInstace vertices[4096*4];
+		//	IndirectWireInstace vertices[4096*2];
 		//};
 		//
 		//WireInstances wire_cubes;
@@ -236,9 +236,9 @@ struct glDebugDraw {
 		if (shad_tris->prog) {
 			OGL_TRACE("Dbg.Tris");
 		
-			vbo_tris.stream(dbg.lines);
+			vbo_tris.stream(dbg.tris);
 
-			if (dbg.lines.size() > 0) {
+			if (dbg.tris.size() > 0) {
 				glUseProgram(shad_tris->prog);
 
 				PipelineState s;
@@ -247,7 +247,7 @@ struct glDebugDraw {
 				state.set(s);
 
 				glBindVertexArray(vbo_tris.vao);
-				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)dbg.lines.size());
+				glDrawArrays(GL_TRIANGLES, 0, (GLsizei)dbg.tris.size());
 			}
 		}
 		

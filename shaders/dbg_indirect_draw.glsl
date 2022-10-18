@@ -26,7 +26,7 @@ struct IndirectLineVertex {
 //};
 
 // Large SSBO sizes cause extremely long shader compile times?
-#define _INDIRECT_BUFSZ 16384 //4096
+#define _INDIRECT_BUFSZ (4096*2)
 struct IndirectLines {
 	glDrawArraysIndirectCommand cmd;
 	IndirectLineVertex vertices[_INDIRECT_BUFSZ];

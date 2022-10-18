@@ -19,6 +19,8 @@ uniform vec2  inv_max_size;
 uniform vec2  lod_bound0;
 uniform vec2  lod_bound1;
 
+uniform float water_roughness = 0.5;
+
 #ifdef _VERTEX
 	layout(location = 0) in vec2  attr_pos;
 	
@@ -41,7 +43,7 @@ uniform vec2  lod_bound1;
 	}
 	
 	vec3 gersner_wave (vec2 pos, out vec3 norm, float t, vec2 dir, float steep, float len) {
-		//t = 0;
+		t = 0;
 		
 		float d = dot(dir, pos);
 		
@@ -55,11 +57,11 @@ uniform vec2  lod_bound1;
 		
 		vec3 p = vec3(xy * dir, z);
 		
-		vec3 tang = normalize(vec3(
-			1.0 - amp * sin(f),
-			      amp * cos(f),
-				  0.0));
-		norm = normalize(vec3(-tang.y, tang.x, 0.0));
+		vec3 a = vec3(
+			amp * -cos(f),
+			0.0,//      amp * cos(f),
+			(1.0 - amp * sin(f)));//      0.0));
+		norm = normalize(a);
 		return p;
 	}
 	
@@ -67,7 +69,8 @@ uniform vec2  lod_bound1;
 		vec3 p = vec3(pos, 0.0);
 		vec3 norm = vec3(0.0,0.0, 1.0);
 		
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, 0)), water_roughness, 9.0);
 		
 		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.18, 9.0);
 		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(-7.3, 8)), 0.15, 8.7);
@@ -88,19 +91,19 @@ uniform vec2  lod_bound1;
 		
 		vec3 a = wave_vertex(pos.xy);
 		
-		{ // numerical derivative of heightmap for normals
-			float eps = max(quad_size, 2.0);
-			vec3 b = vec3(pos.x + eps, pos.y, 0.0);
-			vec3 c = vec3(pos.x, pos.y + eps, 0.0);
-			
-			b = wave_vertex(b.xy);
-			c = wave_vertex(c.xy);
-			
-			v.normal = normalize(cross(b - a, c - a));
-		}
+		//{ // numerical derivative of heightmap for normals
+		//	float eps = 0.1;
+		//	vec3 b = vec3(pos.x + eps, pos.y, 0.0);
+		//	vec3 c = vec3(pos.x, pos.y + eps, 0.0);
+		//	
+		//	b = wave_vertex(b.xy);
+		//	c = wave_vertex(c.xy);
+		//	
+		//	v.normal = normalize(cross(b - a, c - a));
+		//}
 		
 		if (_dbgdrawbuf.update && distance(pos.xy, vec2(0)) < 10.0) {
-			dbgdraw_vector(a, v.normal * 0.5, vec4(0,1,0,1));
+			dbgdraw_vector(a, v.normal, vec4(1,0,0,1));
 		}
 		
 		gl_Position = view.world2clip * vec4(a, 1.0);
@@ -116,13 +119,14 @@ uniform vec2  lod_bound1;
 		
 		vec3 col = vec3(1.0, 1.0, 1.0);
 		
-		//vec2 orig_pos = v.uv / inv_max_size;
-		//col *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
+		vec2 orig_pos = v.uv / inv_max_size;
+		col *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
 		
-		col *= water_lighting(v.pos, norm);
+		//col *= water_lighting(v.pos, norm);
+		//
+		//col = apply_fog(col, v.pos);
 		
-		col = apply_fog(col, v.pos);
-		
+		col = mix(col, v.normal, vec3(0.5));
 		frag_col = vec4(col, 1.0);
 	}
 #endif

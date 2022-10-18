@@ -269,6 +269,8 @@ struct Renderer {
 
 		float water_anim = 0;
 
+		float water_roughness = 0.5f;
+
 		void imgui () {
 			ImGui::Checkbox("dbg_lod", &dbg_lod);
 
@@ -279,6 +281,8 @@ struct Renderer {
 			ImGui::DragFloat("lod_fac", &lod_fac, 1, 0, MAP_SZ);
 
 			ImGui::SliderInt("water_base_lod", &water_base_lod, -6, 6);
+
+			ImGui::SliderFloat("water_roughness", &water_roughness, 0, 1);
 
 			ImGui::Text("drawn_chunks: %4d  (%7d vertices)", drawn_chunks, drawn_chunks * chunk_vertices);
 		}
@@ -468,6 +472,8 @@ struct Renderer {
 			
 				shad_water->set_uniform("water_anim", water_anim);
 				shad_water->set_uniform("inv_max_size", 1.0f / float2((float)MAP_SZ));
+
+				shad_water->set_uniform("water_roughness", water_roughness);
 
 				glBindVertexArray(terrain_chunk.vao);
 			
