@@ -10,6 +10,8 @@ textures/*
 *.exe
 *.dll
 *.pdb
+*.exp
+*.lib
 
 *.ilk
 *.iobj
