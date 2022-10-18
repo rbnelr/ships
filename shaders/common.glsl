@@ -70,6 +70,8 @@ layout(std140, binding = 0) uniform Common {
 	Lighting lighting;
 };
 
+#include "dbg_indirect_draw.glsl"
+
 uniform sampler2D clouds;
 
 float sun_strength () {

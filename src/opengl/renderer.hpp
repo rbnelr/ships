@@ -496,11 +496,17 @@ struct Renderer {
 			glEnable(GL_LINE_SMOOTH);
 			glLineWidth(debug_draw.line_width);
 		}
-		
+
 		lighting.sun_dir = float4(g.sun_dir, 0.0);
 
-		common_ubo.set(g.view, lighting);
+		{
+			common_ubo.set(g.view, lighting);
+			
+			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, debug_draw.indirect_vbo);
 
+			debug_draw.update(window.input);
+		}
+		
 		fbo.update(window_size);
 		// Draw to MSAA float framebuffer
 		fbo.bind();

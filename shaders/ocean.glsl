@@ -67,13 +67,13 @@ uniform vec2  lod_bound1;
 		vec3 p = vec3(pos, 0.0);
 		vec3 norm = vec3(0.0,0.0, 1.0);
 		
-		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
+		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.5, 9.0);
 		
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.18, 9.0);
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(-7.3, 8)), 0.15, 8.7);
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(7.15, 1.2)), 0.14, 4.3);
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(17.1, 11)), 0.1, 1.3);
-		p += gersner_wave(pos, norm, water_anim, normalize(vec2(6.1, -13.1)), 0.1, 1.1);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7, -1)), 0.18, 9.0);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(-7.3, 8)), 0.15, 8.7);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(7.15, 1.2)), 0.14, 4.3);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(17.1, 11)), 0.1, 1.3);
+		//p += gersner_wave(pos, norm, water_anim, normalize(vec2(6.1, -13.1)), 0.1, 1.1);
 		
 		v.normal = norm;
 		
@@ -97,6 +97,10 @@ uniform vec2  lod_bound1;
 			c = wave_vertex(c.xy);
 			
 			v.normal = normalize(cross(b - a, c - a));
+		}
+		
+		if (_dbgdrawbuf.update && distance(pos.xy, vec2(0)) < 10.0) {
+			dbgdraw_vector(a, v.normal * 0.5, vec4(0,1,0,1));
 		}
 		
 		gl_Position = view.world2clip * vec4(a, 1.0);
