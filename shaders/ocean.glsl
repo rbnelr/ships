@@ -20,7 +20,6 @@ uniform vec2  lod_bound0;
 uniform vec2  lod_bound1;
 
 // xy = dir  z = steepness  w = wave length
-
 uniform vec4 waves[8+1] = {
 	vec4(normalize(vec2(4.7, -3.3)), 0.20 * 1.0,  97.0),
 	vec4(normalize(vec2(7, -1)),     0.18 * 1.0,  17.0),
@@ -56,6 +55,7 @@ uniform vec4 waves[8+1] = {
 	
 	vec3 gersner_wave (vec2 pos, inout vec3 tang, inout vec3 bitang,
 			float t, float steep, vec2 dir, float len) {
+		
 		
 		float d = dot(dir, pos);
 		

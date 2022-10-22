@@ -42,6 +42,7 @@ struct Renderer {
 
 				debug_draw.imgui();
 				lighting.imgui();
+				ocean.imgui();
 				terrain_renderer.imgui();
 
 				ImGui::SliderFloat("exposure", &exposure, 0.02f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
@@ -87,13 +88,17 @@ struct Renderer {
 		float fog_falloff = 10.0f;
 
 		void imgui () {
-			
-			imgui_ColorEdit("sun_col", &sun_col);
-			imgui_ColorEdit("sky_col", &sky_col);
-			imgui_ColorEdit("fog_col", &fog_col);
+			if (imgui_Header("Lighting", true)) {
 
-			ImGui::DragFloat("fog_base/100", &fog_base, 0.001f);
-			ImGui::DragFloat("fog_falloff/100", &fog_falloff, 0.01f);
+				imgui_ColorEdit("sun_col", &sun_col);
+				imgui_ColorEdit("sky_col", &sky_col);
+				imgui_ColorEdit("fog_col", &fog_col);
+
+				ImGui::DragFloat("fog_base/100", &fog_base, 0.001f);
+				ImGui::DragFloat("fog_falloff/100", &fog_falloff, 0.01f);
+
+				ImGui::PopID();
+			}
 		}
 	};
 
@@ -238,10 +243,76 @@ struct Renderer {
 	};
 	SkyboxRenderer skybox;
 
+	struct Ocean {
+
+		float water_anim = 0;
+		float water_roughness = 0.5f;
+
+		// xy = dir  z = steepness  w = wave length
+		float4 waves[8+1] {
+
+			float4(normalize(float2(  4.70f, -3.3f)), 0.20f,  97.0f),
+			float4(normalize(float2(  7.00f, -1.0f)), 0.18f,  17.0f),
+			float4(normalize(float2(- 7.30f,  8.0f)), 0.15f,  13.0f),
+			float4(normalize(float2(  3.15f,  1.2f)), 0.14f,   7.0f),
+			float4(normalize(float2(-17.10f, 11.0f)), 0.10f,   3.0f),
+			// zero terminated using z
+		};
+
+		void imgui () {
+			if (imgui_Header("Ocean", true)) {
+
+				ImGui::SliderFloat("water_roughness", &water_roughness, 0, 1);
+
+				if (ImGui::BeginTable("waves", 3)) {
+
+					ImGui::TableSetupColumn("dir");
+					ImGui::TableSetupColumn("steep");
+					ImGui::TableSetupColumn("len");
+
+					for (int i=0; i<8; ++i) {
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn();
+
+						auto& w = waves[i];
+
+						float ang = atan2(w.x, w.y);
+						if (ImGui::Button("Randomize"))
+							ang = random.uniformf(0, deg(360));
+						ImGui::SliderAngle("dir", &ang, 0, 360);
+						w.x = cos(ang); w.y = sin(ang);
+
+						ImGui::TableNextColumn();
+						ImGui::TableNextColumn();
+					}
+					ImGui::EndTable();
+				}
+
+				ImGui::PopID();
+			}
+		}
+		void update (Input& I) {
+			water_anim += I.dt;
+			water_anim = fmodf(water_anim, 32.0f);
+		}
+		void set_uniforms (Shader* shad) {
+			if (imgui_Header("TerrainRenderer", true)) {
+
+				shad->set_uniform("water_anim", water_anim);
+				shad->set_uniform("water_roughness", water_roughness);
+
+				shad->set_uniform_array("waves", waves, ARRLEN(waves));
+
+				ImGui::PopID();
+			}
+		}
+	};
+	Ocean ocean;
+
 	struct TerrainRenderer {
 		
 		static constexpr int MAP_SZ = 2048;
-
+		
 		static constexpr int   TERRAIN_CHUNK_SZ = 32; // 128 is max with GL_UNSIGNED_SHORT indices
 
 		Shader* shad_terrain = g_shaders.compile("terrain");
@@ -267,24 +338,23 @@ struct Renderer {
 
 		int water_base_lod = -1;
 
-		float water_anim = 0;
-
-		float water_roughness = 0.5f;
-
 		void imgui () {
-			ImGui::Checkbox("dbg_lod", &dbg_lod);
+			if (imgui_Header("TerrainRenderer", true)) {
 
-			ImGui::Checkbox("draw_terrain", &draw_terrain);
-			ImGui::Checkbox("draw_water", &draw_water);
+				ImGui::Checkbox("dbg_lod", &dbg_lod);
 
-			ImGui::DragFloat("lod_offset", &lod_offset, 1, 0, MAP_SZ);
-			ImGui::DragFloat("lod_fac", &lod_fac, 1, 0, MAP_SZ);
+				ImGui::Checkbox("draw_terrain", &draw_terrain);
+				ImGui::Checkbox("draw_water", &draw_water);
 
-			ImGui::SliderInt("water_base_lod", &water_base_lod, -6, 6);
+				ImGui::DragFloat("lod_offset", &lod_offset, 1, 0, MAP_SZ);
+				ImGui::DragFloat("lod_fac", &lod_fac, 1, 0, MAP_SZ);
 
-			ImGui::SliderFloat("water_roughness", &water_roughness, 0, 1);
+				ImGui::SliderInt("water_base_lod", &water_base_lod, -6, 6);
 
-			ImGui::Text("drawn_chunks: %4d  (%7d vertices)", drawn_chunks, drawn_chunks * chunk_vertices);
+				ImGui::Text("drawn_chunks: %4d  (%7d vertices)", drawn_chunks, drawn_chunks * chunk_vertices);
+
+				ImGui::PopID();
+			}
 		}
 
 		TerrainRenderer () {
@@ -421,11 +491,8 @@ struct Renderer {
 			chunk_vertices = vert_count;
 			chunk_indices = idx_count;
 		}
-		void render (Game& g, Renderer& r, Input& I) {
+		void render (Game& g, Renderer& r) {
 			ZoneScoped;
-
-			water_anim += I.dt;
-			water_anim = fmodf(water_anim, 32.0f);
 
 			drawn_chunks = 0;
 
@@ -469,11 +536,9 @@ struct Renderer {
 				r.state.bind_textures(shad_water, {
 					{ "clouds", r.clouds, r.sampler_normal },
 				});
-			
-				shad_water->set_uniform("water_anim", water_anim);
+				
+				r.ocean.set_uniforms(shad_water);
 				shad_water->set_uniform("inv_max_size", 1.0f / float2((float)MAP_SZ));
-
-				shad_water->set_uniform("water_roughness", water_roughness);
 
 				glBindVertexArray(terrain_chunk.vao);
 			
@@ -504,6 +569,7 @@ struct Renderer {
 		}
 
 		lighting.sun_dir = float4(g.sun_dir, 0.0);
+		ocean.update(window.input);
 
 		{
 			common_ubo.set(g.view, lighting);
@@ -522,7 +588,7 @@ struct Renderer {
 			glClearColor(0.01f, 0.02f, 0.03f, 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-			terrain_renderer.render(g, *this, window.input);
+			terrain_renderer.render(g, *this);
 		
 			skybox.draw_skybox_last(state, *this);
 
