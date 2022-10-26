@@ -19,13 +19,15 @@ uniform vec2  inv_max_size;
 uniform vec2  lod_bound0;
 uniform vec2  lod_bound1;
 
+uniform float water_roughness;
+
 // xy = dir  z = steepness  w = wave length
 uniform vec4 waves[8+1] = {
-	vec4(normalize(vec2(4.7, -3.3)), 0.20 * 1.0,  97.0),
-	vec4(normalize(vec2(7, -1)),     0.18 * 1.0,  17.0),
-	vec4(normalize(vec2(-7.3, 8)),   0.15 * 1.0,  13.0),
-	vec4(normalize(vec2(3.15, 1.2)), 0.14 * 1.0,   7.0),
-	vec4(normalize(vec2(-17.1, 11)), 0.10 * 1.0,   3.0),
+	vec4(normalize(vec2(4.7, -3.3)), 0.20,  97.0),
+	vec4(normalize(vec2(7, -1)),     0.18,  17.0),
+	vec4(normalize(vec2(-7.3, 8)),   0.15,  13.0),
+	vec4(normalize(vec2(3.15, 1.2)), 0.14,   7.0),
+	vec4(normalize(vec2(-17.1, 11)), 0.10,   3.0),
 	vec4(0),
 	vec4(0),
 	vec4(0),
@@ -95,7 +97,7 @@ uniform vec4 waves[8+1] = {
 		
 		for (int i=0; i<8 && waves[i].z > 0.0; ++i) {
 			p += gersner_wave(pos, tang,bitang, water_anim,
-				waves[i].z, waves[i].xy, waves[i].w);
+				waves[i].z * water_roughness, waves[i].xy, waves[i].w);
 		}
 		
 		v.normal = normalize(cross(tang, bitang));

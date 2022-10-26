@@ -30,7 +30,7 @@ void push_quad2 (uint16_t* out, uint16_t a, uint16_t b, uint16_t c, uint16_t d) 
 }
 
 struct Renderer {
-	SERIALIZE(Renderer, lighting, fbo.renderscale, exposure)
+	SERIALIZE(Renderer, lighting, fbo.renderscale, exposure, ocean)
 	
 	void imgui (Input& I) {
 		if (ImGui::Begin("Misc")) {
@@ -244,6 +244,7 @@ struct Renderer {
 	SkyboxRenderer skybox;
 
 	struct Ocean {
+		SERIALIZE(Ocean, water_roughness, waves)
 
 		float water_anim = 0;
 		float water_roughness = 0.5f;
@@ -264,26 +265,37 @@ struct Renderer {
 
 				ImGui::SliderFloat("water_roughness", &water_roughness, 0, 1);
 
-				if (ImGui::BeginTable("waves", 3)) {
+				if (ImGui::BeginTable("waves", 3, ImGuiTableFlags_BordersInner)) {
 
-					ImGui::TableSetupColumn("dir");
-					ImGui::TableSetupColumn("steep");
-					ImGui::TableSetupColumn("len");
+					ImGui::TableSetupColumn("dir",   ImGuiTableColumnFlags_WidthStretch, 1.5f);
+					ImGui::TableSetupColumn("steep", ImGuiTableColumnFlags_WidthStretch, 1);
+					ImGui::TableSetupColumn("len",   ImGuiTableColumnFlags_WidthStretch, 1);
+					ImGui::TableHeadersRow();
 
 					for (int i=0; i<8; ++i) {
-						ImGui::TableNextRow();
+						ImGui::PushID(i);
+							
 						ImGui::TableNextColumn();
 
 						auto& w = waves[i];
 
-						float ang = atan2(w.x, w.y);
-						if (ImGui::Button("Randomize"))
-							ang = random.uniformf(0, deg(360));
-						ImGui::SliderAngle("dir", &ang, 0, 360);
+						float ang = atan2(w.y, w.x);
+						if (ImGui::Button("Rand"))
+							ang = random.uniformf(deg(-180), deg(180));
+						ImGui::SameLine();
+						ImGui::SetNextItemWidth(-1);
+						ImGui::SliderAngle("###xy", &ang, -180, 180);
 						w.x = cos(ang); w.y = sin(ang);
 
 						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-1);
+						ImGui::SliderFloat("###y", &w.z, 0, 1);
+
 						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-1);
+						ImGui::DragFloat("###w", &w.w, 0.1f);
+
+						ImGui::PopID();
 					}
 					ImGui::EndTable();
 				}
@@ -296,15 +308,11 @@ struct Renderer {
 			water_anim = fmodf(water_anim, 32.0f);
 		}
 		void set_uniforms (Shader* shad) {
-			if (imgui_Header("TerrainRenderer", true)) {
 
-				shad->set_uniform("water_anim", water_anim);
-				shad->set_uniform("water_roughness", water_roughness);
+			shad->set_uniform("water_anim", water_anim);
+			shad->set_uniform("water_roughness", water_roughness);
 
-				shad->set_uniform_array("waves", waves, ARRLEN(waves));
-
-				ImGui::PopID();
-			}
+			shad->set_uniform_array("waves[0]", waves, ARRLEN(waves));
 		}
 	};
 	Ocean ocean;
