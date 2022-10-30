@@ -121,6 +121,9 @@
     <ClInclude Include="..\src\opengl\gl_dbgdraw.hpp">
       <Filter>opengl</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\opengl\render_passes.hpp">
+      <Filter>opengl</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shaders\common.glsl">

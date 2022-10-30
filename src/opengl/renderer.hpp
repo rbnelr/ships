@@ -3,6 +3,7 @@
 #include "game.hpp"
 #include "engine/opengl.hpp"
 #include "gl_dbgdraw.hpp"
+#include "render_passes.hpp"
 
 namespace ogl {
 
@@ -30,13 +31,13 @@ void push_quad2 (uint16_t* out, uint16_t a, uint16_t b, uint16_t c, uint16_t d) 
 }
 
 struct Renderer {
-	SERIALIZE(Renderer, lighting, fbo.renderscale, exposure, ocean)
+	SERIALIZE(Renderer, lighting, passes, ocean)
 	
 	void imgui (Input& I) {
 		if (ImGui::Begin("Misc")) {
 			if (imgui_Header("Renderer", true)) {
 
-				fbo.imgui();
+				passes.imgui();
 
 				ImGui::Checkbox("reverse_depth", &ogl::reverse_depth);
 
@@ -44,8 +45,6 @@ struct Renderer {
 				lighting.imgui();
 				ocean.imgui();
 				terrain_renderer.imgui();
-
-				ImGui::SliderFloat("exposure", &exposure, 0.02f, 20.0f, "%.3f", ImGuiSliderFlags_Logarithmic);
 
 				ImGui::PopID();
 			}
@@ -55,18 +54,6 @@ struct Renderer {
 
 	StateManager state;
 	
-	Vao dummy_vao = {"dummy_vao"};
-
-	void draw_fullscreen_triangle () {
-		PipelineState s;
-		s.depth_write  = false;
-		s.blend_enable = false;
-		state.set_no_override(s);
-				
-		glBindVertexArray(dummy_vao);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
-	}
-
 	struct Lighting {
 		SERIALIZE(Lighting, sun_col, sky_col, fog_col, fog_base, fog_falloff)
 
@@ -127,7 +114,7 @@ struct Renderer {
 	};
 	CommonUniforms common_ubo;
 
-	FramebufferTexture fbo;
+	RenderPasses passes;
 
 	Sampler sampler_heightmap  = sampler("sampler_heightmap", FILTER_BILINEAR,  GL_REPEAT);
 	Sampler sampler_normal     = sampler("sampler_normal",    FILTER_MIPMAPPED, GL_REPEAT, true);
@@ -137,8 +124,6 @@ struct Renderer {
 	Lighting lighting;
 
 	Texture2D clouds = {"clouds"};
-
-	float exposure = 1.0f;
 	
 	Renderer () {
 		if (!upload_texture2D<srgba8>(clouds, "textures/clouds.png")) assert(false);
@@ -265,7 +250,9 @@ struct Renderer {
 
 				ImGui::SliderFloat("water_roughness", &water_roughness, 0, 1);
 
-				if (ImGui::BeginTable("waves", 3, ImGuiTableFlags_BordersInner)) {
+				if (ImGui::TreeNode("waves")) {
+
+					ImGui::BeginTable("tblwaves", 3, ImGuiTableFlags_BordersInner);
 
 					ImGui::TableSetupColumn("dir",   ImGuiTableColumnFlags_WidthStretch, 1.5f);
 					ImGui::TableSetupColumn("steep", ImGuiTableColumnFlags_WidthStretch, 1);
@@ -298,6 +285,8 @@ struct Renderer {
 						ImGui::PopID();
 					}
 					ImGui::EndTable();
+
+					ImGui::TreePop();
 				}
 
 				ImGui::PopID();
@@ -499,7 +488,7 @@ struct Renderer {
 			chunk_vertices = vert_count;
 			chunk_indices = idx_count;
 		}
-		void render (Game& g, Renderer& r) {
+		void render_terrain (Game& g, Renderer& r) {
 			ZoneScoped;
 
 			drawn_chunks = 0;
@@ -529,7 +518,10 @@ struct Renderer {
 					glDrawElements(GL_TRIANGLES, chunk_indices, GL_UNSIGNED_SHORT, (void*)0);
 				});
 			}
-			
+		}
+		void render_ocean (Game& g, Renderer& r) {
+			ZoneScoped;
+
 			if (draw_water && shad_water->prog) {
 
 				OGL_TRACE("draw_water");
@@ -558,71 +550,62 @@ struct Renderer {
 	};
 	TerrainRenderer terrain_renderer;
 
-	Shader* shad_postprocess = g_shaders.compile("postprocess");
-
 	void render (Window& window, Game& g, int2 window_size) {
 		ZoneScoped;
-
-		{
-			//OGL_TRACE("set state defaults");
-
-			state.wireframe          = debug_draw.wireframe;
-			state.wireframe_no_cull  = debug_draw.wireframe_no_cull;
-			state.wireframe_no_blend = debug_draw.wireframe_no_blend;
-
-			state.set_default();
-
-			glEnable(GL_LINE_SMOOTH);
-			glLineWidth(debug_draw.line_width);
-		}
-
+		
 		lighting.sun_dir = float4(g.sun_dir, 0.0);
+
 		ocean.update(window.input);
 
 		{
-			common_ubo.set(g.view, lighting);
-			
-			glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, debug_draw.indirect_vbo);
+			OGL_TRACE("setup");
 
-			debug_draw.update(window.input);
+			{
+				//OGL_TRACE("set state defaults");
+
+				state.wireframe          = debug_draw.wireframe;
+				state.wireframe_no_cull  = debug_draw.wireframe_no_cull;
+				state.wireframe_no_blend = debug_draw.wireframe_no_blend;
+
+				state.set_default();
+
+				glEnable(GL_LINE_SMOOTH);
+				glLineWidth(debug_draw.line_width);
+			}
+
+			{
+				common_ubo.set(g.view, lighting);
+			
+				glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, debug_draw.indirect_vbo);
+
+				debug_draw.update(window.input);
+			}
 		}
 		
-		fbo.update(window_size);
-		// Draw to MSAA float framebuffer
-		fbo.bind();
+		passes.update(window_size);
+		
+		passes.begin_primary();
 		{
-			glViewport(0, 0, fbo.renderscale.size.x, fbo.renderscale.size.y);
+			OGL_TRACE("draw opaque");
 
-			glClearColor(0.01f, 0.02f, 0.03f, 1.0f);
-			glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-			terrain_renderer.render(g, *this);
+			terrain_renderer.render_terrain(g, *this);
 		
 			skybox.draw_skybox_last(state, *this);
+		}
+
+		passes.copy_primary_for_distortion();
+		{
+			OGL_TRACE("draw transparent");
+
+			terrain_renderer.render_ocean(g, *this);
 
 			debug_draw.render(state, g.dbgdraw);
 		}
 
 		// 
-		fbo.resolve(window_size);
-
-		glViewport(0, 0, window_size.x, window_size.y);
+		passes.postprocess(state, window_size);
 		{
-			if (shad_postprocess->prog) {
-				OGL_TRACE("postprocess");
-				
-				glUseProgram(shad_postprocess->prog);
-				
-				shad_postprocess->set_uniform("exposure", exposure);
-
-				state.bind_textures(shad_postprocess, {
-					{ "fbo_col", { GL_TEXTURE_2D, fbo.fbo.col }, fbo.get_sampler() }
-				});
-				draw_fullscreen_triangle();
-			}
-		}
-
-		{
+			OGL_TRACE("draw ui");
 		
 			if (window.trigger_screenshot && !window.screenshot_hud) take_screenshot(window_size);
 		

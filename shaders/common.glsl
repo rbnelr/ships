@@ -189,7 +189,7 @@ vec3 simple_lighting (vec3 pos, vec3 normal) {
 	
 	return vec3(diffuse);
 }
-vec3 water_lighting (vec3 pos, vec3 normal) {
+vec4 water_lighting (vec4 col, vec3 pos, vec3 normal) {
 	vec3 dir = normalize(pos - view.cam_pos);
 	
 	//float d = max(dot(lighting.sun_dir, normal), 0.0);
@@ -200,5 +200,8 @@ vec3 water_lighting (vec3 pos, vec3 normal) {
 	
 	float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.1);
 	
-	return vec3(mix(vec3(0.0), specular, F));
+	col.rgb *= 0.01;
+	col.a = 0.95;
+	
+	return vec4(mix(col, vec4(specular, 1.0), F));
 }

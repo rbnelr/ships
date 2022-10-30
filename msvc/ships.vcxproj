@@ -58,6 +58,7 @@
     <ClInclude Include="..\src\game.hpp" />
     <ClInclude Include="..\src\opengl\gl_dbgdraw.hpp" />
     <ClInclude Include="..\src\opengl\renderer.hpp" />
+    <ClInclude Include="..\src\opengl\render_passes.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shaders\common.glsl" />

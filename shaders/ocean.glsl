@@ -129,14 +129,14 @@ uniform vec4 waves[8+1] = {
 	void main () {
 		vec3 norm = normalize(v.normal);
 		
-		vec3 col = vec3(1.0, 1.0, 1.0);
+		vec4 col = vec4(1.0, 1.0, 1.0, 1.0);
 		
-		//vec2 orig_pos = v.uv / inv_max_size;
-		//col *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
+		vec2 orig_pos = v.uv / inv_max_size;
+		col.rgb *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
 		
-		col *= water_lighting(v.pos, norm);
-		col = apply_fog(col, v.pos);
+		col = water_lighting(col, v.pos, norm);
+		col.rgb = apply_fog(col.rgb, v.pos);
 		
-		frag_col = vec4(col, 1.0);
+		frag_col = col;
 	}
 #endif
