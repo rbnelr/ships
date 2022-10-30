@@ -534,6 +534,8 @@ struct Renderer {
 				glUseProgram(shad_water->prog);
 
 				r.state.bind_textures(shad_water, {
+					{ "opaque_fbo", {GL_TEXTURE_2D, r.passes.fbo_opaque_copy.col}, r.passes.fbo_sampler_bilin },
+
 					{ "clouds", r.clouds, r.sampler_normal },
 				});
 				

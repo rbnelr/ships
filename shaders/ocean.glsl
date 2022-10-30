@@ -5,6 +5,7 @@
 
 struct Vertex {
 	vec3 pos;
+	vec2 fbo_uv;
 	vec2 uv;
 	vec3 normal;
 };
@@ -57,7 +58,7 @@ uniform vec4 waves[8+1] = {
 	
 	vec3 gersner_wave (vec2 pos, inout vec3 tang, inout vec3 bitang,
 			float t, float steep, vec2 dir, float len) {
-		
+		//t = 0.0;
 		
 		float d = dot(dir, pos);
 		
@@ -119,20 +120,57 @@ uniform vec4 waves[8+1] = {
 		}
 		
 		gl_Position = view.world2clip * vec4(p, 1.0);
-		v.pos = p;
-		v.uv  = pos.xy * inv_max_size;
+		v.pos    = p;
+		v.fbo_uv = (gl_Position.xy / gl_Position.w) * 0.5 + 0.5;
+		v.uv     = pos.xy * inv_max_size;
 	}
 #endif
 #ifdef _FRAGMENT
 	
+	uniform sampler2D opaque_fbo;
+
+	vec4 water_lighting (vec4 col, vec3 pos, vec3 normal) {
+		vec3 dir = normalize(pos - view.cam_pos);
+		
+		//float d = max(dot(lighting.sun_dir, normal), 0.0);
+		//vec3 diffuse = lighting.sun_col*2.0 * d + lighting.sky_col*0.3;
+		
+		vec3 refl_dir = reflect(dir, normal);
+		vec3 specular = get_skybox_light(pos, refl_dir);
+		
+		float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.1);
+		
+		//col.rgb *= 0.01;
+		//col.a = 0.8;
+		
+		const float IOR_air   = 1.0;
+		const float IOR_water = 1.3333;
+		const float eta = IOR_air / IOR_water;
+		
+		vec3 refr_dir = refract(dir, normal, eta);
+		vec3 refr_cam = mat3(view.world2cam) * refr_dir;
+		
+		//vec2 uv = v.fbo_uv + refr_cam.xy * 0.1;
+		vec2 uv = v.fbo_uv;
+		vec3 opaque_tex = texture(opaque_fbo, uv).rgb;
+		
+		col.rgb = opaque_tex * col.rgb;
+		
+		col.a = 1.0;
+		col.rgb *= 0.05;
+		
+		//return col;
+		return vec4(mix(col, vec4(specular, 1.0), F));
+	}
+
 	out vec4 frag_col;
 	void main () {
 		vec3 norm = normalize(v.normal);
 		
 		vec4 col = vec4(1.0, 1.0, 1.0, 1.0);
 		
-		vec2 orig_pos = v.uv / inv_max_size;
-		col.rgb *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
+		//vec2 orig_pos = v.uv / inv_max_size;
+		//col.rgb *= (fract(orig_pos.x)>0.5) == (fract(orig_pos.y)>0.5) ? 1.0 : 0.8;
 		
 		col = water_lighting(col, v.pos, norm);
 		col.rgb = apply_fog(col.rgb, v.pos);

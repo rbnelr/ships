@@ -189,19 +189,3 @@ vec3 simple_lighting (vec3 pos, vec3 normal) {
 	
 	return vec3(diffuse);
 }
-vec4 water_lighting (vec4 col, vec3 pos, vec3 normal) {
-	vec3 dir = normalize(pos - view.cam_pos);
-	
-	//float d = max(dot(lighting.sun_dir, normal), 0.0);
-	//vec3 diffuse = lighting.sun_col*2.0 * d + lighting.sky_col*0.3;
-	
-	vec3 a = reflect(dir, normal);
-	vec3 specular = get_skybox_light(pos, a);
-	
-	float F = fresnel_roughness(dot(normal, -dir), 0.05, 0.1);
-	
-	col.rgb *= 0.01;
-	col.a = 0.95;
-	
-	return vec4(mix(col, vec4(specular, 1.0), F));
-}

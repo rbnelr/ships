@@ -28,6 +28,8 @@ struct RenderPasses {
 	
 	Sampler fbo_sampler         = sampler("fbo_sampler", FILTER_MIPMAPPED, GL_CLAMP_TO_EDGE);
 	Sampler fbo_sampler_nearest = sampler("fbo_sampler_nearest", FILTER_NEAREST, GL_CLAMP_TO_EDGE);
+
+	Sampler fbo_sampler_bilin   = sampler("fbo_sampler_bilin", FILTER_BILINEAR, GL_CLAMP_TO_EDGE);
 	
 	Sampler& get_sampler () {
 		return renderscale.nearest ? fbo_sampler_nearest : fbo_sampler;
@@ -61,12 +63,12 @@ struct RenderPasses {
 
 			if (renderscale.MSAA > 1) {
 				fbo_MSAA        = Renderbuffer("fbo.MSAA",        renderscale.size, color_format, depth_format, false, renderscale.MSAA);
-				fbo_opaque_copy = Renderbuffer("fbo.opaque_copy", renderscale.size, color_format, depth_format, false, 1);
+				fbo_opaque_copy = Renderbuffer("fbo.opaque_copy", renderscale.size, color_format, 0, false, 1);
 				fbo             = Renderbuffer("fbo",             renderscale.size, color_format, 0, color_mips, 1);
 			}
 			else {
 				fbo             = Renderbuffer("fbo",             renderscale.size, color_format, depth_format, color_mips, 1);
-				fbo_opaque_copy = Renderbuffer("fbo.opaque_copy", renderscale.size, color_format, depth_format, false, 1);
+				fbo_opaque_copy = Renderbuffer("fbo.opaque_copy", renderscale.size, color_format, 0, false, 1);
 				// leave fbo_resolve as 0
 			}
 		}
@@ -92,7 +94,7 @@ struct RenderPasses {
 
 		glBlitFramebuffer(0,0, renderscale.size.x,renderscale.size.y,
 							0,0, renderscale.size.x,renderscale.size.y,
-							GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+							GL_COLOR_BUFFER_BIT, GL_NEAREST); // | GL_DEPTH_BUFFER_BIT
 
 		glBindFramebuffer(GL_FRAMEBUFFER, (fbo_MSAA.fbo ? fbo_MSAA : fbo).fbo);
 	}
