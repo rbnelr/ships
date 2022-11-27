@@ -74,7 +74,7 @@
     <ClCompile Include="..\src\engine\opengl_text.cpp">
       <Filter>engine</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\engine\tracy\TracyClient.cpp">
+    <ClCompile Include="..\src\engine\tracy\public\TracyClient.cpp">
       <Filter>engine</Filter>
     </ClCompile>
   </ItemGroup>
@@ -124,6 +124,7 @@
     <ClInclude Include="..\src\opengl\render_passes.hpp">
       <Filter>opengl</Filter>
     </ClInclude>
+    <ClInclude Include="..\src\engine_config.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shaders\common.glsl">

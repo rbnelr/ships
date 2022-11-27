@@ -7,29 +7,6 @@
 
 namespace ogl {
 
-void push_quad (uint16_t* out, uint16_t a, uint16_t b, uint16_t c, uint16_t d) {
-	// D---C
-	// | / |
-	// A---B
-	out[0] = b;
-	out[1] = c;
-	out[2] = a;
-	out[3] = a;
-	out[4] = c;
-	out[5] = d;
-}
-void push_quad2 (uint16_t* out, uint16_t a, uint16_t b, uint16_t c, uint16_t d) {
-	// D---C
-	// | \ |
-	// A---B
-	out[0] = a;
-	out[1] = b;
-	out[2] = d;
-	out[3] = d;
-	out[4] = b;
-	out[5] = c;
-}
-
 struct Renderer {
 	SERIALIZE(Renderer, lighting, passes, ocean)
 	
